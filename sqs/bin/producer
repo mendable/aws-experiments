@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+require "bundler"
+Bundler.require(:default)
+
+client = Aws::SQS::Client.new #(http_wire_trace: true)
+
+queue_name = ENV.fetch("QUEUE_NAME")
+queue = client.get_queue_url(queue_name: queue_name)
+queue_url = queue.queue_url
+
+queue = Aws::SQS::Queue.new(url: queue_url, client: client)
+
+puts "Queue URL: #{queue_url}"
+
+20.times do
+  message_body = "Hello world! - #{Time.now}"
+  puts "Publishing Message: '#{message_body}'"
+  queue.send_message(message_body: message_body)
+  sleep 1
+end

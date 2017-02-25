@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+
+require "bundler"
+Bundler.require(:default)
+
+client = Aws::SQS::Client.new #(http_wire_trace: true)
+
+queue_name = ENV.fetch("QUEUE_NAME")
+queue = client.get_queue_url(queue_name: queue_name)
+queue_url = queue.queue_url
+
+queue = Aws::SQS::Queue.new(url: queue_url, client: client)
+
+puts "Queue URL: #{queue_url}"
+
+poller = Aws::SQS::QueuePoller.new(queue_url)
+
+poller.poll do |message, stats|
+  puts "Received Message: '#{message.message_id}' (ApproximateReceiveCount: #{message.attributes["ApproximateReceiveCount"]})"
+
+  if ARGV.include?("--simulate-failures")
+    failed = message.attributes["ApproximateFirstReceiveTimestamp"].to_i % 2 == 0
+    if failed
+      puts "Message ID '#{message.message_id}' for simulated failure"
+      throw :skip_delete
+    end
+  end
+
+  sleep 5 # simulate delay of async work
+end
